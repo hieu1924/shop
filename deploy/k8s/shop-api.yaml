@@ -1,0 +1,105 @@
+# Mục 3.8: Deployment + Service + HPA. CHƯA được chạy thử trên cluster thật trong dự án này.
+# Chỉ dùng Kubernetes khi có nhiều service, nhiều team và có người vận hành được nó; trước đó ECS, Cloud Run
+# hoặc một PaaS cho phần lớn lợi ích (autoscaling, rolling deploy, health check) với công vận hành ít hơn.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: shop-api
+  template:
+    metadata:
+      labels:
+        app: shop-api
+    spec:
+      terminationGracePeriodSeconds: 40   # lớn hơn spring.lifecycle.timeout-per-shutdown-phase (20s)
+      containers:
+        - name: app
+          image: registry.example.com/shop-api:1.4.2
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod                  # log JSON (xem application-prod.yml)
+            - name: DB_HOST
+              value: pgbouncer             # xem deploy/pgbouncer
+            - name: DB_PORT
+              value: "6432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: shop-db
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: shop-db
+                  key: password
+            - name: REDIS_HOST
+              value: redis
+            - name: RABBIT_HOST
+              value: rabbitmq
+            - name: JWT_PUBLIC_KEY_LOCATION   # PHẢI đặt: mặc định là khóa dev trong repo
+              value: file:/etc/shop/jwt/public.pem
+            - name: TRACING_EXPORT_ENABLED
+              value: "true"
+            - name: OTEL_TRACES_ENDPOINT
+              value: http://otel-collector:4318/v1/traces
+          resources:
+            requests:
+              cpu: 500m
+              memory: 768Mi
+            limits:
+              memory: 1Gi
+          # Readiness lỗi: pod chỉ bị rút khỏi load balancer. Liveness lỗi: pod bị khởi động lại.
+          # Đừng để liveness phụ thuộc DB, nếu không DB chậm một chút sẽ khiến mọi pod restart cùng lúc
+          # (mặc định của Spring Boot đã tách đúng như vậy).
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-api
+spec:
+  selector:
+    app: shop-api
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shop-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: shop-api
+  minReplicas: 3
+  # Tính trước kết nối database: maxReplicas x (pool primary 20 + pool replica 30) = 12 x 50 = 600 kết nối tối đa
+  # tới PgBouncer/DB. Con số này phải nằm trong giới hạn của PgBouncer (max_client_conn) và của DB,
+  # nếu không autoscale sẽ đánh sập DB đúng lúc tải cao nhất.
+  maxReplicas: 12
+  metrics:
+    # Scale theo CPU, không theo memory: JVM giữ heap đã cấp phát và ít khi trả lại, nên memory gần như
+    # không giảm khi tải giảm; HPA theo memory sẽ chỉ tăng mà không giảm.
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
