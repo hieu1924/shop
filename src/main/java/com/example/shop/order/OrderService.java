@@ -1,6 +1,7 @@
 package com.example.shop.order;
 
 import com.example.shop.catalog.ProductService;
+import com.example.shop.common.event.UserEventService;
 import com.example.shop.common.job.JobService;
 import com.example.shop.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -18,12 +19,15 @@ public class OrderService {
 	private final ProductService products;   // gọi qua service của module catalog
 	private final UserService users;
 	private final JobService jobs;
+	private final UserEventService events;
 
-	public OrderService(OrderRepository orders, ProductService products, UserService users, JobService jobs) {
+	public OrderService(OrderRepository orders, ProductService products, UserService users, JobService jobs,
+						UserEventService events) {
 		this.orders = orders;
 		this.products = products;
 		this.users = users;
 		this.jobs = jobs;
+		this.events = events;
 	}
 
 	@Transactional
@@ -41,6 +45,7 @@ public class OrderService {
 		// Ghi job gửi email trong CÙNG transaction với đơn hàng:
 		// đơn lưu thành công thì job chắc chắn tồn tại, và ngược lại.
 		jobs.enqueue(OrderConfirmationEmailHandler.TYPE, new OrderConfirmationPayload(order.getId(), userId));
+		events.record(userId, "ORDER_PLACED", new OrderPlacedEvent(order.getId(), order.getTotal()));
 
 		return OrderDto.from(order);
 	}
