@@ -73,6 +73,36 @@ app:
       max-lifetime: 1800000
       read-only: true
 
+  payment:
+    base-url: ${PAYMENT_BASE_URL:http://localhost:9090} # chưa có nhà cung cấp thật; gọi sẽ lỗi -> fallback PENDING
+    connect-timeout: 2s
+    read-timeout: 5s
+
+# Mục 3.5: retry bọc ngoài circuit breaker (xem PaymentGateway)
+resilience4j:
+  circuitbreaker:
+    instances:
+      payment:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50 # >= 50% lỗi trong 20 lần gọi gần nhất -> mở mạch
+        slow-call-duration-threshold: 3s
+        slow-call-rate-threshold: 50 # quá chậm cũng tính là lỗi
+        wait-duration-in-open-state: 30s # 30s sau thử lại vài request
+        permitted-number-of-calls-in-half-open-state: 3
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException # 4xx là lỗi của request, không phải của đối tác
+  retry:
+    instances:
+      payment:
+        max-attempts: 3
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException # lỗi mạng, timeout
+          - org.springframework.web.client.HttpServerErrorException # 5xx (vd. 503)
+
 server:
   shutdown: graceful # xử lý xong request đang chạy rồi mới tắt
   forward-headers-strategy: native # tin header X-Forwarded-* từ proxy để biết IP thật, https
