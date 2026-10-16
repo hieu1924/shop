@@ -43,6 +43,7 @@ class OrderEventsFlowTest {
 	@Autowired JdbcTemplate jdbc;
 	@Autowired RabbitTemplate rabbit;
 	@Autowired AmqpAdmin admin;
+	@Autowired io.micrometer.core.instrument.MeterRegistry registry;
 
 	Long userId;
 	Long productId;
@@ -78,7 +79,9 @@ class OrderEventsFlowTest {
 
 	@Test
 	void orderCreatesOutboxEventWhichEndsUpAsOneEmail() {
+		double countBefore = registry.counter("shop.orders.placed").count();
 		Long orderId = placeOrder();
+		assertThat(registry.counter("shop.orders.placed").count()).isEqualTo(countBefore + 1);   // commit thật -> đếm 1
 
 		// outbox ghi cùng transaction với đơn hàng
 		assertThat(jdbc.queryForObject("select count(*) from outbox_events where routing_key = 'order.created'"

@@ -20,14 +20,16 @@ public class OrderService {
 	private final UserService users;
 	private final OutboxService outbox;
 	private final UserEventService events;
+	private final OrderMetrics metrics;
 
 	public OrderService(OrderRepository orders, ProductService products, UserService users, OutboxService outbox,
-						UserEventService events) {
+						UserEventService events, OrderMetrics metrics) {
 		this.orders = orders;
 		this.products = products;
 		this.users = users;
 		this.outbox = outbox;
 		this.events = events;
+		this.metrics = metrics;
 	}
 
 	@Transactional
@@ -46,6 +48,7 @@ public class OrderService {
 		// tồn tại, và ngược lại. OutboxRelay đẩy lên RabbitMQ, nơi email, kho, thống kê... mỗi bên một queue.
 		outbox.publish("order.created", new OrderCreated(order.getId(), userId, order.getTotal()));
 		events.record(userId, "ORDER_PLACED", new OrderPlacedEvent(order.getId(), order.getTotal()));
+		metrics.orderPlaced();
 
 		return OrderDto.from(order);
 	}

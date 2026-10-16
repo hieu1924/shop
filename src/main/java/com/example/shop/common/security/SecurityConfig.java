@@ -24,6 +24,9 @@ public class SecurityConfig {
 				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
+						// Prometheus scrape không mang token. Phải chặn /actuator/ ở load balancer (xem deploy/nginx)
+						// để ngoài internet không đọc được metric.
+						.requestMatchers("/actuator/prometheus").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
 						.requestMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("SCOPE_catalog:write")
 						.requestMatchers("/dev/**").permitAll()   // chỉ tồn tại khi chạy profile dev

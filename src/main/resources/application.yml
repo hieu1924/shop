@@ -8,12 +8,15 @@ spring:
       timeout: 500ms # Redis chậm thì bỏ qua nhanh, đừng kéo cả request theo
   rabbitmq:
     host: ${RABBIT_HOST:localhost}
+    template:
+      observation-enabled: true # trace id đi theo message RabbitMQ
     publisher-confirm-type: correlated # OutboxRelay chờ broker xác nhận rồi mới đánh dấu published
     listener:
       simple:
         concurrency: 2
         max-concurrency: 10
         prefetch: 20
+        observation-enabled: true
         default-requeue-rejected: false # hết lượt retry -> sang DLQ, không lặp vô hạn
         retry:
           enabled: true
@@ -113,10 +116,44 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,circuitbreakers
+  endpoint:
+    health:
+      probes:
+        enabled: true # /actuator/health/liveness và /readiness cho Kubernetes
   health:
     mail:
       enabled: false # SMTP chậm/chết không được làm /actuator/health báo DOWN
+    # Redis và RabbitMQ chết thì app vẫn chạy được (cache fail-open, outbox giữ sự kiện trong DB đến khi broker sống lại),
+    # nên không để chúng làm /actuator/health tổng báo DOWN (503) như mail ở trên.
+    redis:
+      enabled: false
+    rabbit:
+      enabled: false
+    circuitbreakers:
+      enabled: true # trạng thái mạch hiện trong /actuator/health
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true # để Prometheus tính được p95, p99
+  tracing:
+    sampling:
+      probability: 0.1 # lấy mẫu 10% request
+    export:
+      otlp:
+        enabled: ${TRACING_EXPORT_ENABLED:false} # bật khi đã có OpenTelemetry Collector, nếu không exporter chỉ báo lỗi kết nối
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+  otlp:
+    metrics:
+      export:
+        enabled: false # metrics đi qua Prometheus (scrape /actuator/prometheus), không đẩy OTLP
+    logging:
+      export:
+        enabled: false
 
 sentry:
   dsn: ${SENTRY_DSN:}

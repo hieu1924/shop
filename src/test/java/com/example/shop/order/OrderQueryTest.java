@@ -27,6 +27,7 @@ class OrderQueryTest {
 	@Autowired UserRepository users;
 	@Autowired ProductRepository products;
 	@Autowired EntityManager em;
+	@Autowired io.micrometer.core.instrument.MeterRegistry registry;
 
 	@Test
 	void listingOrdersDoesNotIssueOneQueryPerOrder() {
@@ -62,5 +63,17 @@ class OrderQueryTest {
 
 		assertThat(detail.items()).hasSize(1);
 		assertThat(SqlCounter.statements()).hasSize(1);
+	}
+
+	@Test
+	void orderCounterOnlyCountsAfterCommit() {
+		User user = users.save(new User(UUID.randomUUID() + "@test.local", "Tester"));
+		Product p = products.save(new Product("Áo", new BigDecimal("10.00"), 1L));
+		double before = registry.counter("shop.orders.placed").count();
+
+		orders.placeOrder(user.getId(), new PlaceOrderRequest(List.of(new PlaceOrderRequest.Line(p.getId(), 1))));
+
+		// Test này rollback nên afterCommit không bao giờ chạy: nếu đếm ngay trong transaction thì số đã tăng
+		assertThat(registry.counter("shop.orders.placed").count()).isEqualTo(before);
 	}
 }

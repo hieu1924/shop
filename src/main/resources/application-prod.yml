@@ -1,0 +1,5 @@
+# Profile prod: SPRING_PROFILES_ACTIVE=prod
+logging:
+  structured:
+    format:
+      console: ecs # log JSON, tự kèm traceId/spanId để nối log với trace
