@@ -25,13 +25,16 @@ class DevTokenController {
 	}
 
 	@GetMapping("/dev/token")
-	String token(@RequestParam Long userId) {
+	String token(@RequestParam Long userId, @RequestParam(required = false) String scope) {
 		Instant now = Instant.now();
-		JwtClaimsSet claims = JwtClaimsSet.builder()
+		JwtClaimsSet.Builder builder = JwtClaimsSet.builder()
 				.subject(String.valueOf(userId))
 				.issuedAt(now)
-				.expiresAt(now.plus(Duration.ofHours(1)))
-				.build();
+				.expiresAt(now.plus(Duration.ofHours(1)));
+		if (scope != null) {
+			builder.claim("scope", scope);   // vd: catalog:write để được đổi giá sản phẩm
+		}
+		JwtClaimsSet claims = builder.build();
 		JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256).build();
 		return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
 	}

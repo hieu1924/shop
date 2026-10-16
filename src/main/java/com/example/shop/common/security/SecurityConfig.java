@@ -21,6 +21,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+						.requestMatchers(HttpMethod.PUT, "/api/products/**").hasAuthority("SCOPE_catalog:write")
 						.requestMatchers("/dev/**").permitAll()   // chỉ tồn tại khi chạy profile dev
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));

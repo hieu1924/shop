@@ -10,6 +10,15 @@ spring:
       minimum-idle: 5
       connection-timeout: 3000 # ms: chờ lấy kết nối tối đa 3s rồi báo lỗi, đừng treo
       max-lifetime: 1800000 # 30 phút, nên ngắn hơn timeout phía DB/proxy
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+      timeout: 500ms # Redis chậm thì bỏ qua nhanh, đừng kéo cả request theo
+  cache:
+    type: redis
+    redis:
+      time-to-live: 10m # TTL mặc định: lưới an toàn nếu quên evict
   jpa:
     open-in-view: false # tránh giữ kết nối DB suốt request
     hibernate:
