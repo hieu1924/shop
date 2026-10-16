@@ -1,8 +1,13 @@
 package com.example.shop.order;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -21,5 +26,22 @@ public class OrderController {
 	public OrderDto place(@RequestHeader("X-User-Id") Long userId,
 						  @Valid @RequestBody PlaceOrderRequest request) {
 		return orderService.placeOrder(userId, request);
+	}
+
+	@GetMapping
+	public Page<OrderDetailDto> mine(@RequestHeader("X-User-Id") Long userId,
+									 @PageableDefault(size = 20) Pageable pageable) {
+		return orderService.myOrders(userId, pageable);
+	}
+
+	@GetMapping("/summaries")
+	public List<OrderSummary> summaries(@RequestHeader("X-User-Id") Long userId,
+										@PageableDefault(size = 20) Pageable pageable) {
+		return orderService.mySummaries(userId, pageable);
+	}
+
+	@GetMapping("/{id}")
+	public OrderDetailDto get(@RequestHeader("X-User-Id") Long userId, @PathVariable Long id) {
+		return orderService.getOrder(userId, id);
 	}
 }

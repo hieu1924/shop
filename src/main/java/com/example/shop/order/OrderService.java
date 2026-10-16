@@ -4,8 +4,12 @@ import com.example.shop.catalog.ProductService;
 import com.example.shop.common.job.JobService;
 import com.example.shop.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class OrderService {
@@ -39,5 +43,26 @@ public class OrderService {
 		jobs.enqueue(OrderConfirmationEmailHandler.TYPE, new OrderConfirmationPayload(order.getId(), userId));
 
 		return OrderDto.from(order);
+	}
+
+	// Một đơn kèm items: 1 query JOIN nhờ @EntityGraph. Đơn của người khác trả 404 như không tồn tại.
+	@Transactional(readOnly = true)
+	public OrderDetailDto getOrder(Long userId, Long orderId) {
+		return orders.findWithItemsById(orderId)
+				.filter(o -> o.getUserId().equals(userId))
+				.map(OrderDetailDto::from)
+				.orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đơn hàng " + orderId));
+	}
+
+	// Danh sách phân trang: 1 query lấy trang + 1 query IN (...) lấy items của cả trang
+	@Transactional(readOnly = true)
+	public Page<OrderDetailDto> myOrders(Long userId, Pageable pageable) {
+		return orders.findByUserIdOrderByCreatedAtDesc(userId, pageable).map(OrderDetailDto::from);
+	}
+
+	// Chỉ vài cột, không đụng tới bảng order_items
+	@Transactional(readOnly = true)
+	public List<OrderSummary> mySummaries(Long userId, Pageable pageable) {
+		return orders.findSummaries(userId, pageable);
 	}
 }
