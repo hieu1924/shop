@@ -21,6 +21,13 @@ spring:
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Spring chỉ kiểm tra chữ ký bằng public key. Mặc định là khóa DEV (ai có repo cũng ký được token):
+          # production PHẢI đặt JWT_PUBLIC_KEY_LOCATION tới public key của identity provider. Xem dev/README.md
+          public-key-location: ${JWT_PUBLIC_KEY_LOCATION:classpath:jwt/dev-public.pem}
   threads:
     virtual:
       enabled: true # Java 21: virtual threads cho Tomcat, @Async, @Scheduled

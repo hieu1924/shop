@@ -1,0 +1,4 @@
+# Profile dev: SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
+app:
+  dev:
+    private-key-location: file:dev/dev-private.pem   # tương đối so với thư mục chạy (gốc dự án)

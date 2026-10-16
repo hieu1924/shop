@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,29 +21,33 @@ public class OrderController {
 		this.orderService = orderService;
 	}
 
-	// Giai đoạn 1 chưa có xác thực: tạm lấy user từ header X-User-Id.
-	// Mục 2.4 của bài thay bằng JWT (@AuthenticationPrincipal Jwt).
+	// User lấy từ claim `sub` của JWT (mục 2.4). Với identity provider thật mà `sub` là UUID
+	// (Keycloak), cần map sang user id nội bộ, ví dụ bằng claim riêng hoặc tra theo email.
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public OrderDto place(@RequestHeader("X-User-Id") Long userId,
+	public OrderDto place(@AuthenticationPrincipal Jwt jwt,
 						  @Valid @RequestBody PlaceOrderRequest request) {
-		return orderService.placeOrder(userId, request);
+		return orderService.placeOrder(userId(jwt), request);
 	}
 
 	@GetMapping
-	public Page<OrderDetailDto> mine(@RequestHeader("X-User-Id") Long userId,
+	public Page<OrderDetailDto> mine(@AuthenticationPrincipal Jwt jwt,
 									 @PageableDefault(size = 20) Pageable pageable) {
-		return orderService.myOrders(userId, pageable);
+		return orderService.myOrders(userId(jwt), pageable);
 	}
 
 	@GetMapping("/summaries")
-	public List<OrderSummary> summaries(@RequestHeader("X-User-Id") Long userId,
+	public List<OrderSummary> summaries(@AuthenticationPrincipal Jwt jwt,
 										@PageableDefault(size = 20) Pageable pageable) {
-		return orderService.mySummaries(userId, pageable);
+		return orderService.mySummaries(userId(jwt), pageable);
 	}
 
 	@GetMapping("/{id}")
-	public OrderDetailDto get(@RequestHeader("X-User-Id") Long userId, @PathVariable Long id) {
-		return orderService.getOrder(userId, id);
+	public OrderDetailDto get(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+		return orderService.getOrder(userId(jwt), id);
+	}
+
+	private static Long userId(Jwt jwt) {
+		return Long.valueOf(jwt.getSubject());
 	}
 }
