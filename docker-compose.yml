@@ -4,6 +4,8 @@ services:
     container_name: shop-db
     restart: unless-stopped
     environment:
+      TZ: UTC
+      PGTZ: UTC
       POSTGRES_DB: shop
       POSTGRES_USER: ${DB_USER:-shop}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-shop}
