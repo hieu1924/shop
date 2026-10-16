@@ -1,4 +1,13 @@
 # Profile prod: SPRING_PROFILES_ACTIVE=prod
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Không có giá trị mặc định: thiếu biến môi trường thì app từ chối khởi động, thay vì âm thầm chấp nhận
+          # token ký bằng khóa dev nằm trong repo.
+          public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+
 logging:
   structured:
     format:

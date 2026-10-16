@@ -130,8 +130,8 @@ management:
       enabled: false
     rabbit:
       enabled: false
-    circuitbreakers:
-      enabled: true # trạng thái mạch hiện trong /actuator/health
+    # Trạng thái circuit breaker xem ở /actuator/circuitbreakers và metric resilience4j_circuitbreaker_state.
+    # Cố ý KHÔNG đưa vào /actuator/health: mạch payment mở không được làm cả app báo DOWN.
   metrics:
     distribution:
       percentiles-histogram:
