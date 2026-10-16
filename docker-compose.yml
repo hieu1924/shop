@@ -3,6 +3,8 @@ services:
     image: postgres:17
     container_name: shop-db
     restart: unless-stopped
+    # Log mọi truy vấn chậm hơn 200ms (mục 2.1): xem bằng `docker logs shop-db`
+    command: ["postgres", "-c", "log_min_duration_statement=200"]
     environment:
       TZ: UTC
       PGTZ: UTC

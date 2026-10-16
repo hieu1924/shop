@@ -9,6 +9,10 @@ spring:
     open-in-view: false # tránh giữ kết nối DB suốt request
     hibernate:
       ddl-auto: validate # schema do Flyway quản lý, không để Hibernate tự sửa
+    properties:
+      hibernate:
+        default_batch_fetch_size: 50 # gom lazy loading thành truy vấn IN (...), chống N+1
+        # generate_statistics: true  # chỉ bật khi điều tra, không để ở production
   mail:
     host: ${MAIL_HOST:localhost}
     port: ${MAIL_PORT:1025}
