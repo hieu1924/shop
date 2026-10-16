@@ -5,6 +5,11 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:5435/shop
     username: ${DB_USER:shop}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20 # mỗi instance; số instance × giá trị này phải < max_connections của DB
+      minimum-idle: 5
+      connection-timeout: 3000 # ms: chờ lấy kết nối tối đa 3s rồi báo lỗi, đừng treo
+      max-lifetime: 1800000 # 30 phút, nên ngắn hơn timeout phía DB/proxy
   jpa:
     open-in-view: false # tránh giữ kết nối DB suốt request
     hibernate:
