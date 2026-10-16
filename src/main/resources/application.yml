@@ -28,12 +28,15 @@ spring:
           # Spring chỉ kiểm tra chữ ký bằng public key. Mặc định là khóa DEV (ai có repo cũng ký được token):
           # production PHẢI đặt JWT_PUBLIC_KEY_LOCATION tới public key của identity provider. Xem dev/README.md
           public-key-location: ${JWT_PUBLIC_KEY_LOCATION:classpath:jwt/dev-public.pem}
+  lifecycle:
+    timeout-per-shutdown-phase: 20s # chờ tối đa 20s cho request đang chạy
   threads:
     virtual:
       enabled: true # Java 21: virtual threads cho Tomcat, @Async, @Scheduled
 
 server:
   shutdown: graceful # xử lý xong request đang chạy rồi mới tắt
+  forward-headers-strategy: native # tin header X-Forwarded-* từ proxy để biết IP thật, https
 
 management:
   endpoints:
