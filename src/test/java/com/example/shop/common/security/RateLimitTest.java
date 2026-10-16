@@ -23,7 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // Cần Redis đang chạy (docker compose up -d)
-@SpringBootTest(properties = "app.rate-limit.per-minute=3")
+// timeout Redis nới ra 3s: một lần kết nối lại chậm (Docker trên Windows) sẽ khiến filter fail-open và test thấy 200 thay vì 429
+@SpringBootTest(properties = {"app.rate-limit.per-minute=3", "spring.data.redis.timeout=3s"})
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
 class RateLimitTest {
@@ -31,16 +32,23 @@ class RateLimitTest {
 	@Autowired MockMvc mvc;
 
 	private String tokenFor(long userId) throws Exception {
-		return mvc.perform(get("/dev/token").param("userId", String.valueOf(userId)))
+		// IP ngẫu nhiên: bộ đếm Redis dùng chung với các test khác nên 127.0.0.1 có thể đã vượt giới hạn 3 trong phút này
+		return mvc.perform(get("/dev/token").param("userId", String.valueOf(userId)).with(fromIp(randomIp())))
 				.andReturn().getResponse().getContentAsString();
 	}
 
 	// Fixed window: nếu test rơi vào ranh giới hai phút thì bộ đếm bị tách đôi. Chờ sang cửa sổ mới cho chắc.
-	private static void startOfFreshWindow() throws InterruptedException {
+	private void startOfFreshWindow() throws Exception {
 		long second = java.time.Instant.now().getEpochSecond() % 60;
 		if (second > 50) {
 			Thread.sleep((61 - second) * 1000);
 		}
+		// khởi động lại kết nối Redis (nếu bị rớt trong lúc chờ) bằng một request không liên quan đến bộ đếm của test
+		mvc.perform(get("/api/products").with(fromIp(randomIp())));
+	}
+
+	private static String randomIp() {
+		return "10." + ThreadLocalRandom.current().nextInt(256) + "." + ThreadLocalRandom.current().nextInt(256) + "." + ThreadLocalRandom.current().nextInt(1, 255);
 	}
 
 	private static RequestPostProcessor fromIp(String ip) {
