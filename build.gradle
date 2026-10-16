@@ -55,6 +55,8 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(Test).configureEach {
 	systemProperty 'file.encoding', 'UTF-8'
+	// Windows báo "Asia/Saigon" (tên cũ) mà PostgreSQL từ chối; ShopApplication.main đã chặn việc này, test thì không đi qua main
+	systemProperty 'user.timezone', 'Asia/Ho_Chi_Minh'
 }
 
 tasks.withType(JavaExec).configureEach {
