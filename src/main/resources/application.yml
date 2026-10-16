@@ -1,15 +1,6 @@
 spring:
   application:
     name: shop
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5435/shop
-    username: ${DB_USER:shop}
-    password: ${DB_PASSWORD}
-    hikari:
-      maximum-pool-size: 20 # mỗi instance; số instance × giá trị này phải < max_connections của DB
-      minimum-idle: 5
-      connection-timeout: 3000 # ms: chờ lấy kết nối tối đa 3s rồi báo lỗi, đừng treo
-      max-lifetime: 1800000 # 30 phút, nên ngắn hơn timeout phía DB/proxy
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -42,6 +33,31 @@ spring:
   threads:
     virtual:
       enabled: true # Java 21: virtual threads cho Tomcat, @Async, @Scheduled
+
+# Mục 2.3 + 3.1: hai pool Hikari, định tuyến theo @Transactional(readOnly) (xem DataSourceConfig).
+# ApplicationName giúp nhận ra kết nối đang đi pool nào: select current_setting('application_name').
+# Local chưa có replica thật nên replica mặc định trỏ về cùng DB; production đặt DB_REPLICA_HOST.
+app:
+  datasource:
+    primary:
+      pool-name: shop-primary
+      jdbc-url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5435}/shop?ApplicationName=shop-primary
+      username: ${DB_USER:shop}
+      password: ${DB_PASSWORD}
+      maximum-pool-size: 20 # mỗi instance; số instance × giá trị này (cả hai pool) phải < max_connections của DB
+      minimum-idle: 5
+      connection-timeout: 3000 # ms: chờ lấy kết nối tối đa 3s rồi báo lỗi, đừng treo
+      max-lifetime: 1800000 # 30 phút, nên ngắn hơn timeout phía DB/proxy
+    replica:
+      pool-name: shop-replica
+      jdbc-url: jdbc:postgresql://${DB_REPLICA_HOST:${DB_HOST:localhost}}:${DB_REPLICA_PORT:${DB_PORT:5435}}/shop?ApplicationName=shop-replica
+      username: ${DB_USER:shop}
+      password: ${DB_PASSWORD}
+      maximum-pool-size: 30
+      minimum-idle: 5
+      connection-timeout: 3000
+      max-lifetime: 1800000
+      read-only: true
 
 server:
   shutdown: graceful # xử lý xong request đang chạy rồi mới tắt

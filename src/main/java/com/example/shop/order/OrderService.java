@@ -45,6 +45,9 @@ public class OrderService {
 		return OrderDto.from(order);
 	}
 
+	// Các hàm đọc bên dưới là readOnly nên đi replica (mục 3.1) và có thể chậm hơn primary một chút:
+	// đơn vừa đặt có thể chưa hiện ngay. Vì vậy placeOrder trả luôn dữ liệu vừa ghi thay vì bắt client đọc lại.
+
 	// Một đơn kèm items: 1 query JOIN nhờ @EntityGraph. Đơn của người khác trả 404 như không tồn tại.
 	@Transactional(readOnly = true)
 	public OrderDetailDto getOrder(Long userId, Long orderId) {
