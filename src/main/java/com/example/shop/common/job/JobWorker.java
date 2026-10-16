@@ -2,11 +2,11 @@ package com.example.shop.common.job;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -18,9 +18,10 @@ public class JobWorker {
 	private final JobRepository jobs;
 	private final Map<String, JobHandler> handlers;
 
-	public JobWorker(JobRepository jobs, List<JobHandler> handlerList) {
+	// ObjectProvider: app vẫn khởi động được khi chưa có JobHandler nào (email đã chuyển sang RabbitMQ ở mục 3.4)
+	public JobWorker(JobRepository jobs, ObjectProvider<JobHandler> handlerProvider) {
 		this.jobs = jobs;
-		this.handlers = handlerList.stream()
+		this.handlers = handlerProvider.stream()
 				.collect(Collectors.toMap(JobHandler::type, h -> h));
 	}
 

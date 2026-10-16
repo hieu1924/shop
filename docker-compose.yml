@@ -34,5 +34,19 @@ services:
       timeout: 3s
       retries: 10
 
+  # Mục 3.4: message broker. Giao diện quản trị: http://localhost:15672 (guest/guest)
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: shop-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   shop_pgdata:

@@ -2,7 +2,7 @@ package com.example.shop.order;
 
 import com.example.shop.catalog.ProductService;
 import com.example.shop.common.event.UserEventService;
-import com.example.shop.common.job.JobService;
+import com.example.shop.common.outbox.OutboxService;
 import com.example.shop.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
@@ -18,15 +18,15 @@ public class OrderService {
 	private final OrderRepository orders;
 	private final ProductService products;   // gọi qua service của module catalog
 	private final UserService users;
-	private final JobService jobs;
+	private final OutboxService outbox;
 	private final UserEventService events;
 
-	public OrderService(OrderRepository orders, ProductService products, UserService users, JobService jobs,
+	public OrderService(OrderRepository orders, ProductService products, UserService users, OutboxService outbox,
 						UserEventService events) {
 		this.orders = orders;
 		this.products = products;
 		this.users = users;
-		this.jobs = jobs;
+		this.outbox = outbox;
 		this.events = events;
 	}
 
@@ -42,9 +42,9 @@ public class OrderService {
 		}
 		orders.save(order);
 
-		// Ghi job gửi email trong CÙNG transaction với đơn hàng:
-		// đơn lưu thành công thì job chắc chắn tồn tại, và ngược lại.
-		jobs.enqueue(OrderConfirmationEmailHandler.TYPE, new OrderConfirmationPayload(order.getId(), userId));
+		// Ghi sự kiện vào outbox trong CÙNG transaction với đơn hàng: đơn lưu thành công thì sự kiện chắc chắn
+		// tồn tại, và ngược lại. OutboxRelay đẩy lên RabbitMQ, nơi email, kho, thống kê... mỗi bên một queue.
+		outbox.publish("order.created", new OrderCreated(order.getId(), userId, order.getTotal()));
 		events.record(userId, "ORDER_PLACED", new OrderPlacedEvent(order.getId(), order.getTotal()));
 
 		return OrderDto.from(order);

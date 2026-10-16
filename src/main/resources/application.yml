@@ -6,6 +6,20 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: 6379
       timeout: 500ms # Redis chậm thì bỏ qua nhanh, đừng kéo cả request theo
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    publisher-confirm-type: correlated # OutboxRelay chờ broker xác nhận rồi mới đánh dấu published
+    listener:
+      simple:
+        concurrency: 2
+        max-concurrency: 10
+        prefetch: 20
+        default-requeue-rejected: false # hết lượt retry -> sang DLQ, không lặp vô hạn
+        retry:
+          enabled: true
+          max-retries: 3 # số lần THỬ LẠI sau lần đầu (bài ghi max-attempts, tên này đã deprecated ở Boot 4)
+          initial-interval: 1s
+          multiplier: 2
   cache:
     type: redis
     redis:
